@@ -1,65 +1,50 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine, Base
-from .routers import auth, skills, jobs
-from . import models
+import sys
+import os
+import tempfile
+from pdfminer.high_level import extract_text
 
-# Create Tables
-Base.metadata.create_all(bind=engine)
+# allow importing ai_engine
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
-app = FastAPI(title="SkillNuron AI Backend")
+from ai_engine.model.predictor import analyze_resume
 
-# CORS Setup
-origins = [
-    "http://localhost:5173",  # Vite default port
-    "http://localhost:3000",
-]
+app = FastAPI(title="SkillNuron AI API")
 
+# ---------------- CORS (allow frontend) ----------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Seed Mock Jobs (Optional Helper)
-@app.on_event("startup")
-def seed_db():
-    from .database import SessionLocal
-    db = SessionLocal()
-    if db.query(models.Job).count() == 0:
-        mock_jobs = [
-            models.Job(
-                title="Senior Full Stack Developer",
-                company="TechCorp Inc.",
-                location="Remote",
-                type="Full-time",
-                salary_range="$120k - $160k",
-                description="We are looking for an experienced Full Stack Developer...",
-                required_skills="React,Node.js,TypeScript,MongoDB,AWS",
-                posted_date="2025-11-20"
-            ),
-             models.Job(
-                title="Frontend Developer (React)",
-                company="StartupXYZ",
-                location="San Francisco, CA",
-                type="Full-time",
-                salary_range="$100k - $140k",
-                description="Join our fast-growing startup...",
-                required_skills="React,JavaScript,HTML/CSS,Git",
-                posted_date="2025-11-22"
-            )
-        ]
-        db.add_all(mock_jobs)
-        db.commit()
-    db.close()
-
-# Include Routers
-app.include_router(auth.router, prefix="/api/v1")
-app.include_router(skills.router, prefix="/api/v1")
-app.include_router(jobs.router, prefix="/api/v1")
-
+# ---------------- Root Test ----------------
 @app.get("/")
-def read_root():
+def root():
     return {"message": "Welcome to SkillNuron AI API"}
+
+# ---------------- Resume Analyzer Endpoint ----------------
+@app.post("/analyze-resume")
+async def analyze_resume_api(file: UploadFile = File(...)):
+
+    # Save uploaded file temporarily
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as temp:
+        temp.write(await file.read())
+        temp_path = temp.name
+
+    # Extract text depending on file type
+    if file.filename.lower().endswith(".pdf"):
+        text = extract_text(temp_path)
+
+    else:
+        # txt/doc fallback
+        with open(temp_path, "r", encoding="utf-8", errors="ignore") as f:
+            text = f.read()
+
+    # Run AI model
+    result = analyze_resume(text)
+
+    return result

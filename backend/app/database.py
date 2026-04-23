@@ -1,8 +1,8 @@
+"""Database configuration and session management."""
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Using SQLite for simplicity, but easily swappable for PostgreSQL
 SQLALCHEMY_DATABASE_URL = "sqlite:///./skillnuron.db"
 
 engine = create_engine(

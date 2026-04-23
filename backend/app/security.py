@@ -1,3 +1,4 @@
+"""Security utilities for authentication and password management."""
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -5,19 +6,25 @@ from passlib.context import CryptContext
 
 # SECRET_KEY should be in env variables in production
 # SECRET_KEY generation command: openssl rand -hex 32
-SECRET_KEY= "c2ab80faa5f7b437b9a9cacf5e9709633247f841d65400e9621821b2c463baf1"
+SECRET_KEY = "c2ab80faa5f7b437b9a9cacf5e9709633247f841d65400e9621821b2c463baf1"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def verify_password(plain_password, hashed_password):
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a hashed password."""
     return pwd_context.verify(plain_password, hashed_password)
 
-def get_password_hash(password):
+
+def get_password_hash(password: str) -> str:
+    """Hash a password using bcrypt."""
     return pwd_context.hash(password)
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Create a JWT access token with expiration."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
